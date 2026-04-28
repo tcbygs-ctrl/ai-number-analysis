@@ -2373,6 +2373,16 @@ code {
   text-align: center;
   color: var(--text-muted);
   font-size: 0.9rem;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.pred-grid:has(.ai-empty-state) {
+  display: flex;
+  justify-content: center;
 }
 
 .ai-empty-icon {

@@ -31,6 +31,12 @@ async function fetchJson(url) {
 
 // ---- Date helpers ----
 
+// normalize ให้ทุก drawDate เป็น UTC midnight เสมอ — ป้องกัน timezone drift ทำให้ unique index พลาด
+function toUTCMidnight(date) {
+  const d = new Date(date);
+  return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+}
+
 function parseThaiDate(thaiDateStr) {
   const months = {
     'มกราคม': 0, 'กุมภาพันธ์': 1, 'มีนาคม': 2,    'เมษายน': 3,
@@ -68,7 +74,7 @@ function getPastDrawDates(count) {
 // แปลง rayriffy API response → schema
 function mapRayriftyResponse(apiData) {
   const r = apiData.response;
-  const drawDate = parseThaiDate(r.date);
+  const drawDate = toUTCMidnight(parseThaiDate(r.date));
   if (!drawDate) throw new Error(`ไม่สามารถแปลงวันที่: ${r.date}`);
 
   const findPrize   = id => r.prizes.find(p => p.id === id);
@@ -104,7 +110,7 @@ function parseSanookHtml(html, dateStr) {
   const dd = parseInt(dateStr.slice(0, 2));
   const mm = parseInt(dateStr.slice(2, 4)) - 1;
   const yy = parseInt(dateStr.slice(4)) - 543;
-  const drawDate = new Date(yy, mm, dd);
+  const drawDate = toUTCMidnight(new Date(yy, mm, dd));
 
   return {
     drawDate,
@@ -119,7 +125,7 @@ function parseSanookHtml(html, dateStr) {
 // แปลง vicha-w archive entry → schema
 // รูปแบบ: { date: "YYYY-MM-DD", prizes: { first: "...", last2: "...", last3f: [...], last3b: [...], near1: [...] } }
 function mapArchiveEntry(entry) {
-  const drawDate = new Date(entry.date);
+  const drawDate = toUTCMidnight(new Date(entry.date));
   if (isNaN(drawDate.getTime())) throw new Error(`วันที่ไม่ถูกต้อง: ${entry.date}`);
   const p = entry.prizes || entry.result || {};
   return {

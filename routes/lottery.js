@@ -7,8 +7,7 @@ const { fetchLatest, fetchHistorical, fetchFromArchive } = require('../services/
 // filter วันที่แบบ range เพื่อป้องกัน timezone/millisecond mismatch
 function dateFilter(date) {
   const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return { drawDate: { $gte: d, $lt: new Date(d.getTime() + 86400000) } };
+  return { drawDate: new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())) };
 }
 
 async function getFromDb(limit) {

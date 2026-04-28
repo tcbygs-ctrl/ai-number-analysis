@@ -10,8 +10,7 @@ const store          = require('./data/store');
 
 function dateFilter(date) {
   const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return { drawDate: { $gte: d, $lt: new Date(d.getTime() + 86400000) } };
+  return { drawDate: new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())) };
 }
 const { fetchLatest, fetchHistorical } = require('./services/lotteryFetcher');
 

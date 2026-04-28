@@ -18,7 +18,9 @@ async function getRecords(limit = 100) {
 
 async function getLastTwoNumbers(limit = 100) {
   const records = await getRecords(limit);
-  return records.map(r => r.lastTwo);
+  // records มาเรียง newest→oldest, ต้องกลับเป็น oldest→newest
+  // เพื่อให้ buildRecencyMap และ buildGapMap คำนวณถูกต้อง
+  return records.map(r => r.lastTwo).reverse();
 }
 
 // GET /api/analysis/predict

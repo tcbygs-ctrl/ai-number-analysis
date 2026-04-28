@@ -594,6 +594,110 @@ async function fetchHistory() {
   }
 }
 
+// ===== AI ANALYSIS TAB =====
+async function loadAIAnalysis() {
+  const limit = document.getElementById('ai-limit').value;
+  const btn = document.getElementById('btn-ai-run');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> กำลังวิเคราะห์...';
+
+  setLoading('ai-cards', 'Claude AI กำลังวิเคราะห์ข้อมูล... (ใช้เวลา 5–15 วินาที)');
+  document.getElementById('ai-info').textContent = '';
+  document.getElementById('ai-insights-box').classList.add('ai-insights-hidden');
+  document.getElementById('ai-features').innerHTML = '';
+
+  try {
+    const data = await apiFetch(`/api/analysis/ai-predict?limit=${limit}`);
+
+    document.getElementById('ai-info').innerHTML =
+      `วิเคราะห์จาก <strong>${data.drawsAnalyzed}</strong> งวด &nbsp;·&nbsp; ` +
+      `<span style="color:var(--yellow)"><i class="fa-solid fa-robot"></i> Gemini 2.5 Flash</span>`;
+
+    // แสดง prediction cards
+    document.getElementById('ai-cards').innerHTML = data.predictions.map((p, i) => `
+      <div class="pred-card">
+        <div class="pred-rank-badge">${rankIcon(i)}</div>
+        <div class="pred-num">${p.pair}</div>
+        <div class="pred-pct ai-score-pct">${Math.round(p.aiScore * 100)}%</div>
+        <div class="ai-score-label">AI Score</div>
+        <div class="pred-divider"></div>
+        <div class="pred-meta">
+          <div class="pred-meta-item">
+            <span class="pm-label"><i class="fa-solid fa-arrow-trend-up"></i> ครั้ง</span>
+            <span class="pm-value">${p.frequency}</span>
+          </div>
+          <div class="pred-meta-item">
+            <span class="pm-label"><i class="fa-solid fa-chart-bar"></i> Stat%</span>
+            <span class="pm-value">${p.statProbability}%</span>
+          </div>
+        </div>
+        <div class="ai-reason">
+          <i class="fa-solid fa-brain"></i> ${p.reason}
+        </div>
+      </div>`).join('');
+
+    // แสดง insights
+    if (data.insights && data.insights.length) {
+      const box = document.getElementById('ai-insights-box');
+      box.classList.remove('ai-insights-hidden');
+      document.getElementById('ai-insights-list').innerHTML =
+        data.insights.map(ins => `<li>${ins}</li>`).join('');
+      const warnEl = document.getElementById('ai-warning');
+      if (data.warning) {
+        warnEl.textContent = data.warning;
+        warnEl.style.display = 'block';
+      } else {
+        warnEl.style.display = 'none';
+      }
+    }
+
+    // แสดง feature analysis
+    if (data.features) {
+      const f = data.features;
+      document.getElementById('ai-features').innerHTML = `
+        <div class="ai-feat-card">
+          <div class="ai-feat-title"><i class="fa-solid fa-clock-rotate-left"></i> 5 งวดล่าสุด</div>
+          <div class="ai-feat-chips">${f.recent5.map(n => `<span class="ai-chip">${n}</span>`).join('')}</div>
+        </div>
+        <div class="ai-feat-card">
+          <div class="ai-feat-title"><i class="fa-solid fa-scale-balanced"></i> สัดส่วนเลขคู่/คี่</div>
+          <div class="ai-feat-bar">
+            <div class="ai-feat-bar-fill" style="width:${f.evenOddRatio.evenPct}%"></div>
+          </div>
+          <div class="ai-feat-sub">คู่ ${f.evenOddRatio.evenPct}% / คี่ ${(100 - parseFloat(f.evenOddRatio.evenPct)).toFixed(1)}%</div>
+        </div>
+        <div class="ai-feat-card">
+          <div class="ai-feat-title"><i class="fa-solid fa-arrow-right"></i> Transition บ่อยสุด</div>
+          ${f.topConsecutive.map(c => `
+            <div class="ai-feat-row">
+              <span class="ai-chip">${c.pair.split('->')[0]}</span>
+              <i class="fa-solid fa-arrow-right" style="font-size:0.7rem;color:var(--text-muted)"></i>
+              <span class="ai-chip">${c.pair.split('->')[1]}</span>
+              <span class="ai-feat-cnt">${c.count}x</span>
+            </div>`).join('')}
+        </div>
+        <div class="ai-feat-card">
+          <div class="ai-feat-title"><i class="fa-solid fa-table-cells"></i> Decade Distribution</div>
+          ${Object.entries(f.decadeFreq).map(([d, c]) => `
+            <div class="ai-decade-row">
+              <span class="ai-decade-label">${d}</span>
+              <div class="ai-decade-bar-wrap">
+                <div class="ai-decade-bar" style="width:${Math.min(c * 3, 100)}%"></div>
+              </div>
+              <span class="ai-feat-cnt">${c}</span>
+            </div>`).join('')}
+        </div>`;
+    }
+
+  } catch (err) {
+    document.getElementById('ai-cards').innerHTML =
+      `<div class="empty-state"><i class="fa-solid fa-triangle-exclamation"></i> ${err.message}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> วิเคราะห์ด้วย AI';
+  }
+}
+
 // ===== Auto-load =====
 loadDrawContext();
 loadPredictions();

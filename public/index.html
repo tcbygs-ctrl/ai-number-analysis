@@ -58,6 +58,9 @@
     <button type="button" class="tab-btn" data-tab="history">
       <i class="fa-solid fa-clock-rotate-left"></i> ประวัติ
     </button>
+    <button type="button" class="tab-btn" data-tab="ai">
+      <i class="fa-solid fa-robot"></i> AI วิเคราะห์
+    </button>
     <button type="button" class="tab-btn" data-tab="add">
       <i class="fa-solid fa-plus"></i> เพิ่มข้อมูล
     </button>
@@ -196,6 +199,54 @@
             <tbody id="history-body"></tbody>
           </table>
         </div>
+      </div>
+    </section>
+
+    <!-- TAB: AI วิเคราะห์ -->
+    <section class="tab-content" id="tab-ai">
+      <div class="card ai-header-card">
+        <div class="ai-header">
+          <div class="ai-header-icon"><i class="fa-solid fa-robot"></i></div>
+          <div class="ai-header-text">
+            <h2>AI Pattern Analysis</h2>
+            <p>Claude AI วิเคราะห์ non-linear patterns, seasonal trends, transition probability และ decade clustering จากข้อมูลประวัติ</p>
+          </div>
+        </div>
+        <div class="controls">
+          <label>
+            <span><i class="fa-solid fa-database"></i> งวดที่วิเคราะห์</span>
+            <input type="number" id="ai-limit" value="60" min="10" max="500" />
+          </label>
+          <button type="button" class="btn-ai" onclick="loadAIAnalysis()" id="btn-ai-run">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> วิเคราะห์ด้วย AI
+          </button>
+        </div>
+        <div class="ai-note">
+          <i class="fa-solid fa-circle-info"></i>
+          ใช้ <strong>Gemini 2.5 Flash</strong> — ต้องตั้งค่า <code>GEMINI_API_KEY</code> ใน <code>.env</code> ก่อนใช้งาน
+        </div>
+      </div>
+
+      <div id="ai-insights-box" class="card ai-insights-card ai-insights-hidden">
+        <h3><i class="fa-solid fa-lightbulb"></i> AI Insights</h3>
+        <ul id="ai-insights-list"></ul>
+        <div id="ai-warning" class="ai-warning-box"></div>
+      </div>
+
+      <div class="card">
+        <h2><i class="fa-solid fa-robot card-icon"></i> ผลการทำนายจาก AI (8 คู่)</h2>
+        <div id="ai-info" class="info-bar"></div>
+        <div id="ai-cards" class="pred-grid">
+          <div class="ai-empty-state">
+            <i class="fa-solid fa-robot ai-empty-icon"></i>
+            กดปุ่ม "วิเคราะห์ด้วย AI" เพื่อเริ่มการวิเคราะห์
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2><i class="fa-solid fa-chart-pie card-icon"></i> Feature Analysis</h2>
+        <div id="ai-features" class="ai-features-grid"></div>
       </div>
     </section>
 

@@ -7,6 +7,7 @@ const {
   getBasicStats,
   getFullFrequencyAnalysis
 } = require('../utils/statistics');
+const { getAIPredictions } = require('../utils/aiAnalysis');
 
 async function getRecords(limit = 100) {
   try {
@@ -117,6 +118,34 @@ router.get('/draw-context', async (req, res) => {
       prevResult,
       dataSource: store.getStatus()
     });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// GET /api/analysis/ai-predict
+router.get('/ai-predict', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 60;
+
+    const records = await getRecords(limit);
+    // records เรียง newest→oldest, reverse เป็น oldest→newest
+    const sorted = [...records].reverse();
+    const numbers = sorted.map(r => r.lastTwo);
+    const drawDates = sorted.map(r => r.drawDate);
+
+    // คำนวณ nextDrawDate
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const day = now.getDate();
+    let nextDraw;
+    if (day < 1) nextDraw = new Date(year, month, 1);
+    else if (day < 16) nextDraw = new Date(year, month, 16);
+    else nextDraw = new Date(year, month + 1, 1);
+
+    const result = await getAIPredictions(numbers, drawDates, nextDraw);
+    res.json({ success: true, drawsAnalyzed: numbers.length, ...result });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

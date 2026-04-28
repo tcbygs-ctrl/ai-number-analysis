@@ -701,6 +701,11 @@ async function loadAIAnalysis() {
 // ===== Auto-load =====
 loadDrawContext();
 loadPredictions();
+
+// โหลด badge count จาก DB ตอนเปิดหน้า
+apiFetch('/api/lottery/fetch-status').then(s => {
+  if (s.count) document.getElementById('hist-count-badge').textContent = `${s.count} งวด`;
+}).catch(() => {});
 loadHistory();
 
 // อัปเดต badge จำนวนงวดใน store

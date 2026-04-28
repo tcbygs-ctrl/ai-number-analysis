@@ -151,8 +151,14 @@ router.post('/seed-archive', async (req, res) => {
 });
 
 // GET /api/lottery/fetch-status — ตรวจสอบสถานะการดึงข้อมูล
-router.get('/fetch-status', (req, res) => {
-  res.json({ success: true, ...store.getStatus() });
+router.get('/fetch-status', async (req, res) => {
+  const status = store.getStatus();
+  try {
+    const dbCount = await LotteryResult.countDocuments();
+    res.json({ success: true, ...status, count: dbCount || status.count });
+  } catch {
+    res.json({ success: true, ...status });
+  }
 });
 
 module.exports = router;

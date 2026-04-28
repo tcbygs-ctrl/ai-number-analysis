@@ -1,0 +1,140 @@
+const ss = require('simple-statistics');
+
+/**
+ * นับความถี่ของตัวเลขแต่ละตัวจาก dataset
+ */
+function buildFrequencyMap(numbers) {
+  const freq = {};
+  for (const num of numbers) {
+    freq[num] = (freq[num] || 0) + 1;
+  }
+  return freq;
+}
+
+/**
+ * คำนวณ Recency Score — เลขที่ออกล่าสุดจะได้คะแนนสูงกว่า
+ * ใช้ exponential decay: score = e^(-λ * position)
+ */
+function buildRecencyMap(numbers, decay = 0.05) {
+  const recency = {};
+  for (let i = numbers.length - 1; i >= 0; i--) {
+    const position = numbers.length - 1 - i;
+    const score = Math.exp(-decay * position);
+    recency[numbers[i]] = (recency[numbers[i]] || 0) + score;
+  }
+  return recency;
+}
+
+/**
+ * คำนวณ "Gap Score" — เลขที่ขาดช่วงนานจะได้คะแนนพิเศษ (Due theory)
+ */
+function buildGapMap(numbers) {
+  const lastSeen = {};
+  const gap = {};
+  const totalDraws = numbers.length;
+
+  for (let i = 0; i < numbers.length; i++) {
+    const num = numbers[i];
+    if (lastSeen[num] !== undefined) {
+      gap[num] = i - lastSeen[num];
+    }
+    lastSeen[num] = i;
+  }
+
+  // เลขที่ไม่เคยออกเลย หรือขาดนาน = gap สูง
+  for (let n = 0; n <= 99; n++) {
+    const key = String(n).padStart(2, '0');
+    if (lastSeen[key] === undefined) {
+      gap[key] = totalDraws;
+    } else if (!gap[key]) {
+      gap[key] = totalDraws - lastSeen[key];
+    }
+  }
+  return gap;
+}
+
+/**
+ * รวมคะแนนและคำนวณ % ความน่าจะเป็น
+ * weights: { frequency, recency, gap }
+ */
+function calculateScores(numbers, weights = { frequency: 0.5, recency: 0.3, gap: 0.2 }) {
+  const freqMap = buildFrequencyMap(numbers);
+  const recencyMap = buildRecencyMap(numbers);
+  const gapMap = buildGapMap(numbers);
+
+  const maxFreq = Math.max(...Object.values(freqMap));
+  const maxRecency = Math.max(...Object.values(recencyMap));
+  const maxGap = Math.max(...Object.values(gapMap));
+
+  const scores = {};
+  const allPairs = Array.from({ length: 100 }, (_, i) => String(i).padStart(2, '0'));
+
+  for (const pair of allPairs) {
+    const normFreq = ((freqMap[pair] || 0) / maxFreq) * weights.frequency;
+    const normRecency = ((recencyMap[pair] || 0) / maxRecency) * weights.recency;
+    const normGap = ((gapMap[pair] || 0) / maxGap) * weights.gap;
+    scores[pair] = normFreq + normRecency + normGap;
+  }
+
+  const totalScore = Object.values(scores).reduce((a, b) => a + b, 0);
+
+  const result = Object.entries(scores).map(([pair, score]) => ({
+    pair,
+    score,
+    probability: totalScore > 0 ? parseFloat(((score / totalScore) * 100).toFixed(2)) : 0,
+    frequency: freqMap[pair] || 0,
+    lastGap: gapMap[pair] || 0
+  }));
+
+  return result.sort((a, b) => b.score - a.score);
+}
+
+/**
+ * ดึง Top N คู่ที่มีโอกาสสูงสุด
+ */
+function getTopPredictions(numbers, topN = 8) {
+  const ranked = calculateScores(numbers);
+  return ranked.slice(0, topN);
+}
+
+/**
+ * สถิติพื้นฐานของชุดตัวเลข
+ */
+function getBasicStats(numbers) {
+  const numArr = numbers.map(n => parseInt(n, 10));
+  return {
+    count: numArr.length,
+    mean: parseFloat(ss.mean(numArr).toFixed(2)),
+    median: ss.median(numArr),
+    mode: ss.mode(numArr),
+    stdDev: parseFloat(ss.standardDeviation(numArr).toFixed(2)),
+    min: ss.min(numArr),
+    max: ss.max(numArr)
+  };
+}
+
+/**
+ * วิเคราะห์ความถี่ทุกตัวเลข (00-99) พร้อม % ต่อรวม
+ */
+function getFullFrequencyAnalysis(numbers) {
+  const freqMap = buildFrequencyMap(numbers);
+  const total = numbers.length;
+
+  return Array.from({ length: 100 }, (_, i) => {
+    const pair = String(i).padStart(2, '0');
+    const count = freqMap[pair] || 0;
+    return {
+      pair,
+      count,
+      percentage: total > 0 ? parseFloat(((count / total) * 100).toFixed(2)) : 0
+    };
+  });
+}
+
+module.exports = {
+  getTopPredictions,
+  getBasicStats,
+  getFullFrequencyAnalysis,
+  calculateScores,
+  buildFrequencyMap
+};

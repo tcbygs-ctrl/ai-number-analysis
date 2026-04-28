@@ -601,7 +601,7 @@ async function loadAIAnalysis() {
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span> กำลังวิเคราะห์...';
 
-  setLoading('ai-cards', 'Claude AI กำลังวิเคราะห์ข้อมูล... (ใช้เวลา 5–15 วินาที)');
+  setLoading('ai-cards', 'Gemini กำลังวิเคราะห์ข้อมูล... (ใช้เวลา 5–15 วินาที)');
   document.getElementById('ai-info').textContent = '';
   document.getElementById('ai-insights-box').classList.add('ai-insights-hidden');
   document.getElementById('ai-features').innerHTML = '';

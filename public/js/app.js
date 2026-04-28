@@ -1,6 +1,7 @@
 const API = '';
 let chartPred = null;
 let chartFreq = null;
+let _nextDrawDateStr = '';
 
 // ===== Tab Navigation =====
 document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -51,6 +52,7 @@ async function loadDrawContext() {
   try {
     const d = await apiFetch('/api/analysis/draw-context');
     const nx = d.nextDraw;
+    _nextDrawDateStr = nx.dateStr;
     const lr = d.latestResult;
     const pr = d.prevResult;
 
@@ -151,9 +153,13 @@ async function loadPredictions() {
   try {
     const data = await apiFetch(`/api/analysis/predict?limit=${limit}&topN=8&fw=${fw}&rw=${rw}&gw=${gw}`);
 
+    const drawLabel = _nextDrawDateStr
+      ? `<span style="color:var(--yellow);font-weight:700"><i class="fa-solid fa-wand-magic-sparkles"></i> ทำนายสำหรับงวด ${_nextDrawDateStr}</span> &nbsp;·&nbsp; `
+      : '';
     document.getElementById('pred-info').innerHTML =
+      drawLabel +
       `วิเคราะห์จาก <strong>${data.drawsAnalyzed}</strong> งวด &nbsp;·&nbsp; ` +
-      `น้ำหนัก: ความถี่ <strong>${fw}</strong> · ล่าสุด <strong>${rw}</strong> · Gap <strong>${gw}</strong>`;
+      `น้ำหนัก: ความถี่ <strong>${fw}</strong> · เว้นช่วง <strong>${rw}</strong> · Gap <strong>${gw}</strong>`;
 
     const cards = document.getElementById('pred-cards');
     cards.innerHTML = data.predictions.map((p, i) => `
@@ -180,7 +186,7 @@ async function loadPredictions() {
             <span class="pt-val">${p.components.frequency}%</span>
           </div>
           <div class="pt-row">
-            <span class="pt-label"><i class="fa-solid fa-clock"></i> ล่าสุด</span>
+            <span class="pt-label"><i class="fa-solid fa-clock"></i> เว้นช่วง</span>
             <span class="pt-bar-wrap"><span class="pt-bar pt-bar--recency" style="width:${Math.min(p.components.recency * 5, 100)}%"></span></span>
             <span class="pt-val">${p.components.recency}%</span>
           </div>

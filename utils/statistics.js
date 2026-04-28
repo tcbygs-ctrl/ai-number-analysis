@@ -12,15 +12,24 @@ function buildFrequencyMap(numbers) {
 }
 
 /**
- * คำนวณ Recency Score — เลขที่ออกล่าสุดจะได้คะแนนสูงกว่า
- * ใช้ exponential decay: score = e^(-λ * position)
+ * คำนวณ Cooling Score — เลขที่ "เว้นช่วงนาน" จะได้คะแนนสูงกว่า (Inverted Recency)
+ * เลขที่เพิ่งออกงวดล่าสุด → score ≈ 0 (cooling period)
+ * เลขที่ไม่ออกมานานหรือยังไม่เคยออก → score → 1
+ * ใช้ exponential: score = 1 − e^(−λ * distanceFromLatest)
  */
 function buildRecencyMap(numbers, decay = 0.05) {
+  const lastSeenPos = {};
+  for (let i = 0; i < numbers.length; i++) {
+    lastSeenPos[numbers[i]] = i; // numbers เรียง oldest→newest, ดัชนีสูง = ออกล่าสุด
+  }
   const recency = {};
-  for (let i = numbers.length - 1; i >= 0; i--) {
-    const position = numbers.length - 1 - i;
-    const score = Math.exp(-decay * position);
-    recency[numbers[i]] = (recency[numbers[i]] || 0) + score;
+  for (let n = 0; n <= 99; n++) {
+    const key = String(n).padStart(2, '0');
+    const lastIdx = lastSeenPos[key];
+    const distanceFromLatest = lastIdx === undefined
+      ? numbers.length          // ไม่เคยออกเลย = ห่างสุด
+      : (numbers.length - 1 - lastIdx); // 0=งวดล่าสุด, สูง=ไม่ออกมานาน
+    recency[key] = 1 - Math.exp(-decay * distanceFromLatest);
   }
   return recency;
 }

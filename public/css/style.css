@@ -114,6 +114,24 @@
   background: rgba(240, 244, 255, 0.95);
 }
 
+/* ตัวเลขหลักใน pred-card และ result panel ต้องอ่านออกในโหมดสว่าง */
+[data-theme="light"] .pred-num {
+  color: var(--indigo-dark);
+  text-shadow: none;
+}
+
+[data-theme="light"] .result-prize-num {
+  color: #92400e;
+}
+
+[data-theme="light"] .result-prize.last2 .result-prize-num {
+  color: var(--indigo-dark);
+}
+
+[data-theme="light"] .pred-pct {
+  color: #b45309;
+}
+
 [data-theme="light"] .pred-tooltip {
   background: #ffffff;
   box-shadow: 0 8px 32px rgba(99, 102, 241, 0.18);
@@ -154,7 +172,6 @@
   font-size: 0.85rem;
   transition: all 0.25s var(--ease);
   flex-shrink: 0;
-  margin-left: auto;
   position: relative;
   overflow: hidden;
 }

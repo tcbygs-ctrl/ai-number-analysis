@@ -3,6 +3,7 @@ const http  = require('http');
 
 const RAYRIFFY_BASE = 'https://lotto.api.rayriffy.com';
 const SANOOK_BASE   = 'https://news.sanook.com/lotto/check';
+const ARCHIVE_URL   = 'https://raw.githubusercontent.com/vicha-w/thai-lotto-archive/master/data.json';
 
 // ---- HTTP helpers ----
 
@@ -115,12 +116,45 @@ function parseSanookHtml(html, dateStr) {
   };
 }
 
+// แปลง vicha-w archive entry → schema
+// รูปแบบ: { date: "YYYY-MM-DD", prizes: { first: "...", last2: "...", last3f: [...], last3b: [...], near1: [...] } }
+function mapArchiveEntry(entry) {
+  const drawDate = new Date(entry.date);
+  if (isNaN(drawDate.getTime())) throw new Error(`วันที่ไม่ถูกต้อง: ${entry.date}`);
+  const p = entry.prizes || entry.result || {};
+  return {
+    drawDate,
+    firstPrize: p.first  || p.first1  || '',
+    lastTwo:    p.last2  || '',
+    lastThree:  Array.isArray(p.last3b) ? p.last3b : (p.last3b ? [p.last3b] : []),
+    frontThree: Array.isArray(p.last3f) ? p.last3f : (p.last3f ? [p.last3f] : []),
+    nearFirst:  Array.isArray(p.near1)  ? p.near1  : (p.near1  ? [p.near1]  : [])
+  };
+}
+
+// ดึง archive ทั้งหมดจาก GitHub (Static JSON — ไม่ติด 5xx)
+async function fetchFromArchive() {
+  const data = await fetchJson(ARCHIVE_URL);
+  if (!Array.isArray(data)) throw new Error('Archive ไม่ใช่ Array');
+  return data
+    .map(entry => { try { return mapArchiveEntry(entry); } catch { return null; } })
+    .filter(r => r && r.firstPrize);
+}
+
 // ---- Public API ----
 
 async function fetchLatest() {
-  const data = await fetchJson(`${RAYRIFFY_BASE}/latest`);
-  if (data.status !== 'success') throw new Error('API ตอบกลับ status ไม่ใช่ success');
-  return mapRayriftyResponse(data);
+  // ลอง rayriffy ก่อน ถ้าล้มเหลวให้ดึงงวดล่าสุดจาก archive แทน
+  try {
+    const data = await fetchJson(`${RAYRIFFY_BASE}/latest`);
+    if (data.status !== 'success') throw new Error('API ตอบกลับ status ไม่ใช่ success');
+    return mapRayriftyResponse(data);
+  } catch (primaryErr) {
+    console.warn(`⚠️  rayriffy ล้มเหลว (${primaryErr.message}) — ใช้ archive แทน`);
+    const all = await fetchFromArchive();
+    if (all.length === 0) throw new Error('Archive ว่างเปล่า');
+    return all[0]; // เรียงใหม่→เก่า งวดแรกคืองวดล่าสุด
+  }
 }
 
 async function fetchByDate(dateStr) {
@@ -145,4 +179,4 @@ async function fetchHistorical(count = 24) {
   return results;
 }
 
-module.exports = { fetchLatest, fetchByDate, fetchHistorical, getPastDrawDates };
+module.exports = { fetchLatest, fetchByDate, fetchHistorical, fetchFromArchive, getPastDrawDates };

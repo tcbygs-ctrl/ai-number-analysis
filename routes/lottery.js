@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const LotteryResult = require('../models/LotteryResult');
 const store = require('../data/store');
-const { fetchLatest, fetchHistorical } = require('../services/lotteryFetcher');
+const { fetchLatest, fetchHistorical, fetchFromArchive } = require('../services/lotteryFetcher');
 
 async function getFromDb(limit) {
   try {
@@ -74,30 +74,71 @@ router.post('/fetch-latest', async (req, res) => {
 // POST /api/lottery/fetch-history?count=24 — ดึงข้อมูลย้อนหลัง
 router.post('/fetch-history', async (req, res) => {
   const count = parseInt(req.query.count) || 24;
+
+  // ไม่รันซ้ำถ้ากำลัง fetching อยู่
+  if (store.getStatus().status === 'fetching') {
+    return res.json({ success: true, message: 'กำลังดึงข้อมูลอยู่แล้ว กรุณารอ...' });
+  }
+
   res.json({ success: true, message: `กำลังดึงข้อมูลย้อนหลัง ${count} งวดในพื้นหลัง...` });
 
-  // ทำงานใน background
   (async () => {
     try {
       store.setStatus('fetching');
       const records = await fetchHistorical(count);
-      store.setRecords(records);
+
+      // merge แทน replace — ข้อมูลเดิมไม่หาย
+      store.mergeRecords(records);
       store.setStatus('done');
 
-      try {
-        for (const r of records) {
+      // save ลง MongoDB (ถ้าเชื่อมต่ออยู่)
+      let saved = 0;
+      for (const r of records) {
+        try {
           await LotteryResult.findOneAndUpdate(
-            { drawDate: r.drawDate },
-            r,
-            { upsert: true, new: true }
+            { drawDate: r.drawDate }, r, { upsert: true, new: true }
           );
-        }
-      } catch { /* MongoDB ไม่ได้เชื่อมต่อ */ }
+          saved++;
+        } catch { /* record นี้ save ไม่ได้ ข้ามไป */ }
+      }
 
-      console.log(`✅ ดึงข้อมูลย้อนหลัง ${records.length}/${count} งวด สำเร็จ`);
+      console.log(`✅ ดึงย้อนหลัง ${records.length}/${count} งวด | บันทึก MongoDB ${saved} รายการ | รวมใน store ${store.getStatus().count} งวด`);
     } catch (err) {
       store.setStatus('error', err);
       console.error('❌ fetch-history error:', err.message);
+    }
+  })();
+});
+
+// POST /api/lottery/seed-archive — ดึงข้อมูลทั้งหมดจาก GitHub archive แล้ว seed ลง MongoDB
+router.post('/seed-archive', async (req, res) => {
+  if (store.getStatus().status === 'fetching') {
+    return res.json({ success: true, message: 'กำลังดึงข้อมูลอยู่แล้ว กรุณารอ...' });
+  }
+
+  res.json({ success: true, message: 'กำลัง seed ข้อมูลจาก GitHub archive ในพื้นหลัง...' });
+
+  (async () => {
+    try {
+      store.setStatus('fetching');
+      const records = await fetchFromArchive();
+      store.mergeRecords(records);
+      store.setStatus('done');
+
+      let saved = 0;
+      for (const r of records) {
+        try {
+          await LotteryResult.findOneAndUpdate(
+            { drawDate: r.drawDate }, r, { upsert: true, new: true }
+          );
+          saved++;
+        } catch { /* MongoDB ไม่ได้เชื่อมต่อ หรือ record นี้ save ไม่ได้ */ }
+      }
+
+      console.log(`✅ seed-archive: ดึง ${records.length} งวด | บันทึก MongoDB ${saved} รายการ`);
+    } catch (err) {
+      store.setStatus('error', err);
+      console.error('❌ seed-archive error:', err.message);
     }
   })();
 });

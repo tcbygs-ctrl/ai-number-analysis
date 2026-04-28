@@ -14,9 +14,17 @@ function getLatest(limit = 30) {
   return _records.slice(0, limit);
 }
 
+// แทนที่ทั้งหมด (ใช้เฉพาะตอนโหลดครั้งแรก)
 function setRecords(records) {
+  if (!records || records.length === 0) return; // ไม่แทนที่ถ้าไม่มีข้อมูล
   _records = [...records].sort((a, b) => new Date(b.drawDate) - new Date(a.drawDate));
   _lastFetchedAt = new Date();
+}
+
+// merge records โดยไม่ลบข้อมูลที่มีอยู่
+function mergeRecords(records) {
+  if (!records || records.length === 0) return;
+  for (const r of records) upsertRecord(r);
 }
 
 function upsertRecord(record) {
@@ -45,4 +53,4 @@ function getStatus() {
   };
 }
 
-module.exports = { getAll, getLatest, setRecords, upsertRecord, setStatus, getStatus };
+module.exports = { getAll, getLatest, setRecords, mergeRecords, upsertRecord, setStatus, getStatus };

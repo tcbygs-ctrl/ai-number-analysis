@@ -45,11 +45,35 @@ async function initData() {
       console.log(`✅ ดึงงวดล่าสุด (${latest.drawDate.toLocaleDateString('th-TH')}) สำเร็จ`);
       _initDone = true;
 
-      // ดึงย้อนหลังใน background (ไม่ block request)
-      fetchHistorical(24).then(records => {
+      // โหลดจาก MongoDB ก่อน (ถ้ามีข้อมูล)
+      try {
+        const LotteryResult = require('./models/LotteryResult');
+        const dbRecords = await LotteryResult.find().sort({ drawDate: -1 }).limit(120);
+        if (dbRecords.length > 0) {
+          store.mergeRecords(dbRecords);
+          console.log(`✅ โหลดจาก MongoDB ${dbRecords.length} งวด`);
+        }
+        if (dbRecords.length >= 20) {
+          store.setStatus('done');
+          return; // มีข้อมูลเพียงพอแล้ว ไม่ต้องดึงจาก API
+        }
+      } catch { /* MongoDB ไม่ได้เชื่อมต่อ */ }
+
+      // ถ้า MongoDB ว่าง ดึงจาก API ย้อนหลัง
+      fetchHistorical(24).then(async records => {
         if (records.length > 0) {
-          store.setRecords(records);
+          store.mergeRecords(records);
           console.log(`✅ ดึงข้อมูลย้อนหลัง ${records.length} งวด สำเร็จ`);
+          // save ลง MongoDB
+          try {
+            const LotteryResult = require('./models/LotteryResult');
+            for (const r of records) {
+              await LotteryResult.findOneAndUpdate(
+                { drawDate: r.drawDate }, r, { upsert: true, new: true }
+              );
+            }
+            console.log(`✅ บันทึกลง MongoDB ${records.length} รายการ`);
+          } catch { /* MongoDB ไม่ได้เชื่อมต่อ */ }
         }
         store.setStatus('done');
       }).catch(err => {

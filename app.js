@@ -7,6 +7,12 @@ const path     = require('path');
 const lotteryRoutes  = require('./routes/lottery');
 const analysisRoutes = require('./routes/analysis');
 const store          = require('./data/store');
+
+function dateFilter(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return { drawDate: { $gte: d, $lt: new Date(d.getTime() + 86400000) } };
+}
 const { fetchLatest, fetchHistorical } = require('./services/lotteryFetcher');
 
 const app = express();
@@ -69,7 +75,7 @@ async function initData() {
             const LotteryResult = require('./models/LotteryResult');
             for (const r of records) {
               await LotteryResult.findOneAndUpdate(
-                { drawDate: r.drawDate }, r, { upsert: true, new: true }
+                dateFilter(r.drawDate), r, { upsert: true, new: true }
               );
             }
             console.log(`✅ บันทึกลง MongoDB ${records.length} รายการ`);

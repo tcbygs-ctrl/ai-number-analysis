@@ -9,6 +9,6 @@ const LotteryResultSchema = new mongoose.Schema({
   nearFirst: [{ type: String }]
 }, { timestamps: true });
 
-LotteryResultSchema.index({ drawDate: -1 });
+LotteryResultSchema.index({ drawDate: -1 }, { unique: true });
 
 module.exports = mongoose.model('LotteryResult', LotteryResultSchema);

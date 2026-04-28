@@ -4,6 +4,13 @@ const LotteryResult = require('../models/LotteryResult');
 const store = require('../data/store');
 const { fetchLatest, fetchHistorical, fetchFromArchive } = require('../services/lotteryFetcher');
 
+// filter วันที่แบบ range เพื่อป้องกัน timezone/millisecond mismatch
+function dateFilter(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return { drawDate: { $gte: d, $lt: new Date(d.getTime() + 86400000) } };
+}
+
 async function getFromDb(limit) {
   try {
     const results = await LotteryResult.find().sort({ drawDate: -1 }).limit(limit);
@@ -58,7 +65,7 @@ router.post('/fetch-latest', async (req, res) => {
 
     try {
       await LotteryResult.findOneAndUpdate(
-        { drawDate: record.drawDate },
+        dateFilter(record.drawDate),
         record,
         { upsert: true, new: true }
       );

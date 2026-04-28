@@ -67,24 +67,35 @@ function calculateScores(numbers, weights = { frequency: 0.5, recency: 0.3, gap:
   const maxGap = Math.max(...Object.values(gapMap));
 
   const scores = {};
+  const components = {};
   const allPairs = Array.from({ length: 100 }, (_, i) => String(i).padStart(2, '0'));
 
   for (const pair of allPairs) {
-    const normFreq = ((freqMap[pair] || 0) / maxFreq) * weights.frequency;
-    const normRecency = ((recencyMap[pair] || 0) / maxRecency) * weights.recency;
-    const normGap = ((gapMap[pair] || 0) / maxGap) * weights.gap;
-    scores[pair] = normFreq + normRecency + normGap;
+    const freqC    = ((freqMap[pair]    || 0) / (maxFreq    || 1)) * weights.frequency;
+    const recencyC = ((recencyMap[pair] || 0) / (maxRecency || 1)) * weights.recency;
+    const gapC     = ((gapMap[pair]     || 0) / (maxGap     || 1)) * weights.gap;
+    scores[pair]     = freqC + recencyC + gapC;
+    components[pair] = { freqC, recencyC, gapC };
   }
 
   const totalScore = Object.values(scores).reduce((a, b) => a + b, 0);
+  const total = totalScore || 1;
 
-  const result = Object.entries(scores).map(([pair, score]) => ({
-    pair,
-    score,
-    probability: totalScore > 0 ? parseFloat(((score / totalScore) * 100).toFixed(2)) : 0,
-    frequency: freqMap[pair] || 0,
-    lastGap: gapMap[pair] || 0
-  }));
+  const result = Object.entries(scores).map(([pair, score]) => {
+    const c = components[pair];
+    return {
+      pair,
+      score,
+      probability: totalScore > 0 ? parseFloat(((score / total) * 100).toFixed(2)) : 0,
+      frequency: freqMap[pair] || 0,
+      lastGap: gapMap[pair] || 0,
+      components: {
+        frequency: parseFloat(((c.freqC    / total) * 100).toFixed(1)),
+        recency:   parseFloat(((c.recencyC / total) * 100).toFixed(1)),
+        gap:       parseFloat(((c.gapC     / total) * 100).toFixed(1))
+      }
+    };
+  });
 
   return result.sort((a, b) => b.score - a.score);
 }
@@ -92,8 +103,8 @@ function calculateScores(numbers, weights = { frequency: 0.5, recency: 0.3, gap:
 /**
  * ดึง Top N คู่ที่มีโอกาสสูงสุด
  */
-function getTopPredictions(numbers, topN = 8) {
-  const ranked = calculateScores(numbers);
+function getTopPredictions(numbers, topN = 8, weights) {
+  const ranked = calculateScores(numbers, weights);
   return ranked.slice(0, topN);
 }
 

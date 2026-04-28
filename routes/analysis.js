@@ -31,7 +31,7 @@ router.get('/predict', async (req, res) => {
     const gw    = parseFloat(req.query.gw)   || 0.2;
 
     const numbers     = await getLastTwoNumbers(limit);
-    const predictions = getTopPredictions(numbers, topN);
+    const predictions = getTopPredictions(numbers, topN, { frequency: fw, recency: rw, gap: gw });
 
     res.json({ success: true, drawsAnalyzed: numbers.length, weights: { frequency: fw, recency: rw, gap: gw }, predictions });
   } catch (err) {

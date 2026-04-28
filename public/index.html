@@ -1,16 +1,19 @@
 <!DOCTYPE html>
 <html lang="th">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI Number Analysis — วิเคราะห์ & ทำนายตัวเลข</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
   <link rel="stylesheet" href="/css/style.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
+
 <body>
 
   <header class="header">
@@ -19,11 +22,20 @@
         <i class="fa-solid fa-chart-line logo-icon"></i>
         <h1 class="logo">AI Number Analysis</h1>
       </div>
-      <p class="subtitle">วิเคราะห์ &amp; ทำนายตัวเลขด้วยสถิติ &nbsp;|&nbsp; Frequency · Recency · Gap Analysis</p>
+      <p class="subtitle">
+        วิเคราะห์ &amp; ทำนายตัวเลขด้วยสถิติ
+        <span class="stat-method"></span>
+      </p>
     </div>
     <div class="header-actions">
-      <button type="button" id="btn-fetch-latest" class="btn-refresh" onclick="fetchLatestData()" title="ดึงข้อมูลงวดล่าสุดจาก API">
+      <button type="button" id="btn-fetch-latest" class="btn-refresh" onclick="fetchLatestData()"
+        title="ดึงข้อมูลงวดล่าสุดจาก API">
         <i class="fa-solid fa-rotate"></i> รีเฟรชข้อมูล
+      </button>
+      <button type="button" id="btn-fetch-history" class="btn-refresh btn-refresh--history" onclick="fetchHistory()"
+        title="ดึงข้อมูลย้อนหลังจาก API">
+        <i class="fa-solid fa-clock-rotate-left"></i> ดึงข้อมูลย้อนหลัง
+        <span class="hist-count-badge" id="hist-count-badge"></span>
       </button>
       <span id="fetch-status-badge" class="fetch-badge"></span>
     </div>
@@ -81,6 +93,28 @@
           <button type="button" class="btn-primary" onclick="loadPredictions()">
             <i class="fa-solid fa-magnifying-glass-chart"></i> วิเคราะห์
           </button>
+        </div>
+        <div class="controls-guide">
+          <div class="cg-item">
+            <div class="cg-label"><i class="fa-solid fa-database"></i> งวดที่วิเคราะห์</div>
+            <div class="cg-desc">จำนวนงวดย้อนหลังที่นำมาคำนวน เช่น 60 = ย้อนหลัง 60 งวด (≈ 2.5 ปี) — <strong>เพิ่ม</strong>เพื่อเน้นแนวโน้มระยะยาว <strong>ลด</strong>เพื่อเน้นแนวโน้มล่าสุด</div>
+          </div>
+          <div class="cg-item">
+            <div class="cg-label"><i class="fa-solid fa-arrow-trend-up"></i> น้ำหนักความถี่ (fw)</div>
+            <div class="cg-desc">สัดส่วนของ <em>จำนวนครั้งที่เลขออก</em> ต่อคะแนนรวม — ค่ายิ่งสูง เลขที่ออกบ่อยจะได้คะแนนมากขึ้น (ค่าเริ่มต้น 0.5)</div>
+          </div>
+          <div class="cg-item">
+            <div class="cg-label"><i class="fa-solid fa-clock"></i> น้ำหนักล่าสุด (rw)</div>
+            <div class="cg-desc">สัดส่วนของ <em>ความใหม่</em> — ใช้ Exponential Decay คำนวณว่าเลขออกในงวดล่าสุดแค่ไหน ยิ่งออกใกล้งวดล่าสุดยิ่งได้คะแนนสูง (ค่าเริ่มต้น 0.3)</div>
+          </div>
+          <div class="cg-item">
+            <div class="cg-label"><i class="fa-solid fa-ruler-horizontal"></i> น้ำหนัก Gap (gw)</div>
+            <div class="cg-desc">สัดส่วนของ <em>ช่วงห่างงวด</em> — เลขที่ขาดหายไปนาน (Due Theory) จะได้คะแนนสูง เหมาะสำหรับหาเลข "ค้าง" ที่ยังไม่ออก (ค่าเริ่มต้น 0.2)</div>
+          </div>
+          <div class="cg-tip">
+            <i class="fa-solid fa-lightbulb"></i>
+            <span>ค่า fw + rw + gw ไม่จำเป็นต้องรวมเป็น 1.0 — ระบบจะ normalize คะแนนให้อัตโนมัติ ทดลองปรับตามกลยุทธ์ที่ต้องการได้เลย</span>
+          </div>
         </div>
         <div id="pred-info" class="info-bar"></div>
         <div id="pred-cards" class="pred-grid"></div>
@@ -202,7 +236,8 @@
           วางข้อมูล JSON array ในรูปแบบ:
           <code>[{"drawDate":"2024-01-01","firstPrize":"123456","lastTwo":"78",...}]</code>
         </p>
-        <textarea id="bulk-json" rows="8" placeholder='[{"drawDate":"2024-01-01","firstPrize":"123456","lastTwo":"78","lastThree":["123","456"],"frontThree":["234","567"]}]'></textarea>
+        <textarea id="bulk-json" rows="8"
+          placeholder='[{"drawDate":"2024-01-01","firstPrize":"123456","lastTwo":"78","lastThree":["123","456"],"frontThree":["234","567"]}]'></textarea>
         <button type="button" class="btn-primary" onclick="bulkImport()">
           <i class="fa-solid fa-upload"></i> นำเข้า
         </button>
@@ -215,7 +250,8 @@
   <footer class="footer">
     <div class="footer-warning">
       <i class="fa-solid fa-triangle-exclamation"></i>
-      ระบบนี้ใช้ <strong>Frequency Analysis</strong> เชิงสถิติเท่านั้น — ผลการออกรางวัลเป็นการสุ่มอิสระ ไม่สามารถพยากรณ์ได้แน่นอน
+      ระบบนี้ใช้ <strong>Frequency Analysis</strong> เชิงสถิติเท่านั้น — ผลการออกรางวัลเป็นการสุ่มอิสระ
+      ไม่สามารถพยากรณ์ได้แน่นอน
     </div>
     <div class="footer-dev">
       <i class="fa-solid fa-code"></i> Developer &nbsp;<strong>BXNZ</strong>
@@ -224,4 +260,5 @@
 
   <script src="/js/app.js"></script>
 </body>
+
 </html>

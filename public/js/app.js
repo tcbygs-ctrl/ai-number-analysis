@@ -172,6 +172,25 @@ async function loadPredictions() {
             <span class="pm-value">${p.lastGap}</span>
           </div>
         </div>
+        <div class="pred-tooltip">
+          <div class="pt-title">วิธีคำนวณ</div>
+          <div class="pt-row">
+            <span class="pt-label"><i class="fa-solid fa-arrow-trend-up"></i> ความถี่</span>
+            <span class="pt-bar-wrap"><span class="pt-bar" style="width:${Math.min(p.components.frequency * 5, 100)}%"></span></span>
+            <span class="pt-val">${p.components.frequency}%</span>
+          </div>
+          <div class="pt-row">
+            <span class="pt-label"><i class="fa-solid fa-clock"></i> ล่าสุด</span>
+            <span class="pt-bar-wrap"><span class="pt-bar pt-bar--recency" style="width:${Math.min(p.components.recency * 5, 100)}%"></span></span>
+            <span class="pt-val">${p.components.recency}%</span>
+          </div>
+          <div class="pt-row">
+            <span class="pt-label"><i class="fa-solid fa-ruler-horizontal"></i> Gap</span>
+            <span class="pt-bar-wrap"><span class="pt-bar pt-bar--gap" style="width:${Math.min(p.components.gap * 5, 100)}%"></span></span>
+            <span class="pt-val">${p.components.gap}%</span>
+          </div>
+          <div class="pt-note">สัดส่วนคะแนนรวมทั้งหมด 100 คู่</div>
+        </div>
       </div>`).join('');
 
     drawPredChart(data.predictions);
@@ -466,7 +485,67 @@ async function fetchLatestData() {
   }
 }
 
+// ===== FETCH HISTORICAL DATA =====
+async function fetchHistory() {
+  const btn   = document.getElementById('btn-fetch-history');
+  const badge = document.getElementById('fetch-status-badge');
+  const count = 72; // ดึง 72 งวด ≈ 3 ปี
+
+  btn.classList.add('loading');
+  btn.disabled = true;
+  badge.className = 'fetch-badge';
+
+  try {
+    const res = await fetch(`/api/lottery/fetch-history?count=${count}`, { method: 'POST' });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message);
+
+    badge.textContent = `กำลังดึง ${count} งวด... (ใช้เวลาประมาณ 30–60 วินาที)`;
+    badge.className = 'fetch-badge info';
+
+    // poll store status จนกว่าจะเสร็จ
+    const poll = setInterval(async () => {
+      try {
+        const s = await apiFetch('/api/lottery/fetch-status');
+        document.getElementById('hist-count-badge').textContent = s.count ? `${s.count} งวด` : '';
+        if (s.status === 'done') {
+          clearInterval(poll);
+          badge.textContent = `ดึงสำเร็จ ${s.count} งวด`;
+          badge.className = 'fetch-badge success';
+          btn.classList.remove('loading');
+          btn.disabled = false;
+          await loadDrawContext();
+          await loadHistory();
+          loadPredictions();
+          setTimeout(() => { badge.className = 'fetch-badge'; }, 5000);
+        } else if (s.status === 'error') {
+          clearInterval(poll);
+          throw new Error(s.error || 'ดึงข้อมูลไม่สำเร็จ');
+        }
+      } catch (pollErr) {
+        clearInterval(poll);
+        badge.textContent = pollErr.message;
+        badge.className = 'fetch-badge error';
+        btn.classList.remove('loading');
+        btn.disabled = false;
+      }
+    }, 3000);
+
+  } catch (err) {
+    badge.textContent = 'ดึงข้อมูลไม่สำเร็จ: ' + err.message;
+    badge.className = 'fetch-badge error';
+    btn.classList.remove('loading');
+    btn.disabled = false;
+    setTimeout(() => { badge.className = 'fetch-badge'; }, 5000);
+  }
+}
+
 // ===== Auto-load =====
 loadDrawContext();
 loadPredictions();
 loadHistory();
+
+// อัปเดต badge จำนวนงวดใน store
+apiFetch('/api/lottery/fetch-status').then(s => {
+  if (s.count) document.getElementById('hist-count-badge').textContent = `${s.count} งวด`;
+}).catch(() => {});

@@ -3,6 +3,54 @@ let chartPred = null;
 let chartFreq = null;
 let _nextDrawDateStr = '';
 
+// ===== Theme =====
+(function initTheme() {
+  const saved = localStorage.getItem('theme');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const theme = saved || (prefersDark ? 'dark' : 'light');
+  if (theme === 'light') document.documentElement.setAttribute('data-theme', 'light');
+})();
+
+function toggleTheme() {
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  if (isLight) {
+    document.documentElement.removeAttribute('data-theme');
+    localStorage.setItem('theme', 'dark');
+  } else {
+    document.documentElement.setAttribute('data-theme', 'light');
+    localStorage.setItem('theme', 'light');
+  }
+  // re-render charts with new theme colors
+  if (chartPred) loadPredictions();
+  if (chartFreq) loadFrequency();
+}
+
+function isLight() {
+  return document.documentElement.getAttribute('data-theme') === 'light';
+}
+
+function chartTheme() {
+  return isLight() ? {
+    tickColor: '#475569',
+    gridColor: 'rgba(0,0,0,0.06)',
+    borderColor: 'rgba(0,0,0,0.1)',
+    tooltipBg: '#ffffff',
+    tooltipBorder: '#e2e8f0',
+    tooltipTitle: '#0f172a',
+    tooltipBody: '#475569',
+    legendColor: '#475569'
+  } : {
+    tickColor: '#94a3b8',
+    gridColor: 'rgba(255,255,255,0.04)',
+    borderColor: 'rgba(255,255,255,0.08)',
+    tooltipBg: '#1e293b',
+    tooltipBorder: '#334155',
+    tooltipTitle: '#f1f5f9',
+    tooltipBody: '#94a3b8',
+    legendColor: '#94a3b8'
+  };
+}
+
 // ===== Tab Navigation =====
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -232,13 +280,13 @@ function drawPredChart(predictions) {
     options: {
       responsive: true,
       plugins: {
-        legend: { labels: { color: '#94a3b8', font: { family: 'Sarabun', size: 12 } } },
+        legend: { labels: { color: chartTheme().legendColor, font: { family: 'Sarabun', size: 12 } } },
         tooltip: {
-          backgroundColor: '#1e293b',
-          borderColor: '#334155',
+          backgroundColor: chartTheme().tooltipBg,
+          borderColor: chartTheme().tooltipBorder,
           borderWidth: 1,
-          titleColor: '#f1f5f9',
-          bodyColor: '#94a3b8',
+          titleColor: chartTheme().tooltipTitle,
+          bodyColor: chartTheme().tooltipBody,
           padding: 12,
           callbacks: {
             label: ctx =>
@@ -248,14 +296,14 @@ function drawPredChart(predictions) {
       },
       scales: {
         x: {
-          ticks: { color: '#94a3b8', font: { family: 'Sarabun', size: 13, weight: '700' } },
-          grid: { color: 'rgba(255,255,255,0.04)' },
-          border: { color: 'rgba(255,255,255,0.08)' }
+          ticks: { color: chartTheme().tickColor, font: { family: 'Sarabun', size: 13, weight: '700' } },
+          grid: { color: chartTheme().gridColor },
+          border: { color: chartTheme().borderColor }
         },
         y: {
-          ticks: { color: '#94a3b8', callback: v => v + '%', font: { family: 'Sarabun', size: 11 } },
-          grid: { color: 'rgba(255,255,255,0.06)' },
-          border: { color: 'rgba(255,255,255,0.08)' }
+          ticks: { color: chartTheme().tickColor, callback: v => v + '%', font: { family: 'Sarabun', size: 11 } },
+          grid: { color: chartTheme().gridColor },
+          border: { color: chartTheme().borderColor }
         }
       }
     }
@@ -337,27 +385,27 @@ function drawFreqChart(freq) {
     options: {
       responsive: true,
       plugins: {
-        legend: { labels: { color: '#94a3b8', font: { family: 'Sarabun', size: 12 } } },
+        legend: { labels: { color: chartTheme().legendColor, font: { family: 'Sarabun', size: 12 } } },
         tooltip: {
-          backgroundColor: '#1e293b',
-          borderColor: '#334155',
+          backgroundColor: chartTheme().tooltipBg,
+          borderColor: chartTheme().tooltipBorder,
           borderWidth: 1,
-          titleColor: '#f1f5f9',
-          bodyColor: '#94a3b8',
+          titleColor: chartTheme().tooltipTitle,
+          bodyColor: chartTheme().tooltipBody,
           padding: 12,
           callbacks: { label: ctx => ` ${ctx.raw} ครั้ง (${freq[ctx.dataIndex].percentage}%)` }
         }
       },
       scales: {
         x: {
-          ticks: { color: '#475569', font: { size: 9, family: 'Sarabun' }, maxRotation: 0 },
-          grid: { color: 'rgba(255,255,255,0.03)' },
-          border: { color: 'rgba(255,255,255,0.08)' }
+          ticks: { color: chartTheme().tickColor, font: { size: 9, family: 'Sarabun' }, maxRotation: 0 },
+          grid: { color: chartTheme().gridColor },
+          border: { color: chartTheme().borderColor }
         },
         y: {
-          ticks: { color: '#94a3b8', font: { family: 'Sarabun', size: 11 } },
-          grid: { color: 'rgba(255,255,255,0.06)' },
-          border: { color: 'rgba(255,255,255,0.08)' }
+          ticks: { color: chartTheme().tickColor, font: { family: 'Sarabun', size: 11 } },
+          grid: { color: chartTheme().gridColor },
+          border: { color: chartTheme().borderColor }
         }
       }
     }
